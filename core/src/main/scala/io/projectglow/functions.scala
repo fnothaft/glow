@@ -18,6 +18,7 @@ package io.projectglow
 
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.catalyst.expressions.{Expression, LambdaFunction, Literal, UnresolvedNamedLambdaVariable}
+import org.apache.spark.sql.functions.{lit, transform}
 
 import io.projectglow.sql.expressions.ExpressionHelper
 
@@ -30,6 +31,7 @@ import io.projectglow.sql.expressions.ExpressionHelper
  * @group etl 
  * @group quality_control 
  * @group gwas_functions 
+ * @group prs_functions
  */
 object functions {
   private def withExpr(expr: Expression): Column = {
@@ -380,5 +382,34 @@ object functions {
    */
   def genotype_states(genotypes: Column): Column = withExpr {
     new io.projectglow.sql.expressions.GenotypeStates(genotypes.expr)
+  }
+
+  /**
+   * Yields a new array where each element has been multiplied by a scalar.
+   * @group prs_functions
+   * @since 0.6.0
+   * 
+   * @param scalar Scalar to multiply the array by.
+   * @param array Array to multiply.
+   * @return A new array where each element has been multiplied by the scalar.
+   */
+  def multiply_array_by_scalar(scalar: Column, array: Column): Column = {
+    transform(array, elem => elem * scalar)
+  }
+
+  /**
+   * Aggregate function that element-wise sums across arrays.
+   * @group prs_functions
+   * @since 0.6.0
+   * 
+   * @param array Column of arrays to aggregate across.
+   * @return A new column containing an array that is the element-wise sum
+   *   across all arrays that were aggregated.
+   */
+  def aggregate_array_elemental_sum(array: Column): Column = {
+    aggregate_by_index(array,
+      lit(0e1),
+      (overall, addition) => overall + addition,
+      (overall1, overall2) => overall1 + overall2)
   }
 }
